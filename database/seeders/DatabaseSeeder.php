@@ -136,67 +136,67 @@ class DatabaseSeeder extends Seeder
         // }
 
         /** finaicialtrans, finalcialtrandetails */
-        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty FROM `temp_data` WHERE voucher_type IN ('DUE','REVDUE','SCHOLARSHIP','REVSCHOLARSHIP/REVCONCESSION','CONCESSION')");
+        // $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty FROM `temp_data` WHERE voucher_type IN ('DUE','REVDUE','SCHOLARSHIP','REVSCHOLARSHIP/REVCONCESSION','CONCESSION')");
 
-        foreach ($trans as $parent) {
-            $tempRecord = TempData::where('voucher_no', $parent->voucher_no)->first();
-            $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
-            $branch = Branch::where('branch_name', $parent->faculty)->first();
-            //$amount = DB::select("SELECT SUM(due_amount) FROM temp_data WHERE voucher_no = '" . $parent->voucher_no . "'");
-            $amountField = $this->getAmountField($parent->voucher_type);
+        // foreach ($trans as $parent) {
+        //     $tempRecord = TempData::where('voucher_no', $parent->voucher_no)->first();
+        //     $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
+        //     $branch = Branch::where('branch_name', $parent->faculty)->first();
+        //     //$amount = DB::select("SELECT SUM(due_amount) FROM temp_data WHERE voucher_no = '" . $parent->voucher_no . "'");
+        //     $amountField = $this->getAmountField($parent->voucher_type);
 
-            $amount = TempData::where('voucher_no', $parent->voucher_no)->sum($amountField);
+        //     $amount = TempData::where('voucher_no', $parent->voucher_no)->sum($amountField);
 
-            $toc = null;
-            if ($tempRecord->voucher_type == 'CONCESSION') {
-                $toc = 1;
-            } elseif ($tempRecord->voucher_type == 'SCHOLARSHIP') {
-                $toc = 2;
-            } else {
-                $toc = null;
-            }
+        //     $toc = null;
+        //     if ($tempRecord->voucher_type == 'CONCESSION') {
+        //         $toc = 1;
+        //     } elseif ($tempRecord->voucher_type == 'SCHOLARSHIP') {
+        //         $toc = 2;
+        //     } else {
+        //         $toc = null;
+        //     }
 
-            $moduleID = 1;
-            if (stristr($tempRecord->fee_head, 'fine') != false) {
-                $moduleID = 11;
-            } elseif (stristr($tempRecord->fee_head, 'mess') != false) {
-                $moduleID = 2;
-            } else {
-                $moduleID = 1;
-            }
-            // add entry in financialtran table
-            $newTran = Financialtran::create([
-                'moduleid' => $moduleID,
-                'transid' => $this->generateTransId(12),
-                'admno' => $tempRecord->admno_uniqueid,
-                'amount' => $amount,
-                'crdr' => $entryMod->crdr,
-                'trandate' => $tempRecord->transaction_date,
-                'acadyear' => $tempRecord->academic_year,
-                'entrymodeno' => $entryMod->entrymodeno,
-                'voucherno' => $parent->voucher_no,
-                'br_id' => $branch->id,
-                'type_of_concession' => $toc,
-            ]);
+        //     $moduleID = 1;
+        //     if (stristr($tempRecord->fee_head, 'fine') != false) {
+        //         $moduleID = 11;
+        //     } elseif (stristr($tempRecord->fee_head, 'mess') != false) {
+        //         $moduleID = 2;
+        //     } else {
+        //         $moduleID = 1;
+        //     }
+        //     // add entry in financialtran table
+        //     $newTran = Financialtran::create([
+        //         'moduleid' => $moduleID,
+        //         'transid' => $this->generateTransId(12),
+        //         'admno' => $tempRecord->admno_uniqueid,
+        //         'amount' => $amount,
+        //         'crdr' => $entryMod->crdr,
+        //         'trandate' => $tempRecord->transaction_date,
+        //         'acadyear' => $tempRecord->academic_year,
+        //         'entrymodeno' => $entryMod->entrymodeno,
+        //         'voucherno' => $parent->voucher_no,
+        //         'br_id' => $branch->id,
+        //         'type_of_concession' => $toc,
+        //     ]);
 
-            // add child entries in 
-            $trandetails = DB::select("SELECT * FROM `temp_data` WHERE voucher_no ='" . $parent->voucher_no . "'");
-            foreach ($trandetails as $trandetail) {
-                $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
-                Financialtrandetail::create([
-                    'financial_trans_id' => $newTran->id,
-                    'module_id' => $moduleID,
-                    'amount' => $trandetail->{$amountField},
-                    'head_id' => 1,
-                    'crdr' => $entryMod->crdr,
-                    'br_id' => $branch->id,
-                    'head_name' => $trandetail->fee_head,
-                ]);
-            }
-        }
+        //     // add child entries in 
+        //     $trandetails = DB::select("SELECT * FROM `temp_data` WHERE voucher_no ='" . $parent->voucher_no . "'");
+        //     foreach ($trandetails as $trandetail) {
+        //         $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
+        //         Financialtrandetail::create([
+        //             'financial_trans_id' => $newTran->id,
+        //             'module_id' => $moduleID,
+        //             'amount' => $trandetail->{$amountField},
+        //             'head_id' => 1,
+        //             'crdr' => $entryMod->crdr,
+        //             'br_id' => $branch->id,
+        //             'head_name' => $trandetail->fee_head,
+        //         ]);
+        //     }
+        // }
 
         /** commmonfeecollections, commonfeecollectionheadwise */
-        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty, roll_no FROM `temp_data` WHERE voucher_type IN ('RCPT','REVRCPT','JV','REVJV','PMT','REVPMT','Fundtransfer')");
+        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty, roll_no FROM `temp_data` WHERE voucher_type IN ('RCPT','REVRCPT','JV','REVJV','PMT','REVPMT','Fundtransfer') limit 1000");
         foreach ($trans as $parent) {
             $tempRecord = TempData::where('voucher_no', $parent->voucher_no)->first();
             $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
