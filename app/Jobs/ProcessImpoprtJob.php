@@ -14,12 +14,11 @@ use Illuminate\Support\Facades\Log;
 class ProcessImpoprtJob implements ShouldQueue
 {
     use Queueable, Dispatchable, InteractsWithQueue, SerializesModels;
-    public $timeout = 1200;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(private string $filepath)
+    public function __construct(private string $filepath) 
     {
         //
     }
@@ -111,6 +110,8 @@ class ProcessImpoprtJob implements ShouldQueue
     private function convertToUTF8($str)
     {
         $str = preg_replace('/[\x00-\x1F\x7F]/', '', $str);
+        $str = str_replace(['�', '+'], '', $str);
+        $str = htmlentities($str, ENT_QUOTES,'UTF-8');
         $str = addslashes($str);
         $enc = mb_detect_encoding($str);
 

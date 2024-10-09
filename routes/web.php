@@ -25,4 +25,6 @@ Route::middleware('auth')->group(function () {
     Route::post('/import-data-process', [ImportController::class, 'processCsvImport'])->name('import.processCsvImport');
 
     Route::get('/import-result', [ImportController::class, 'importResult'])->name('import.result');
+
+    Route::get('/result-verify', [ImportController::class, 'resultVerify'])->name('import.resultVerify');
 });
