@@ -56,7 +56,7 @@ class ProcessDataImportJob implements ShouldQueue
     } catch (\Exception $e) {
       //dd($e->getMessage(), json_encode($this->rowData));
       Log::error($e->getMessage());
-      Log::info(json_encode($this->rowData));
+      Log::info($this->rowData);
     }
   }
 
@@ -69,6 +69,8 @@ class ProcessDataImportJob implements ShouldQueue
   }
 
   private function convertToUTF8($str) {
+    $str = preg_replace('/[\x00-\x1F\x7F]/', '', $str);
+    $str = addslashes($str);
     $enc = mb_detect_encoding($str);
 
     if ($enc && $enc != 'UTF-8') {

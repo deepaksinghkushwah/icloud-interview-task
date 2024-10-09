@@ -38,7 +38,7 @@ return new class extends Migration
             $table->double('adjusted_amount')->nullable(true);
             $table->double('refund_amount')->nullable(true);
             $table->double('fund_trancfer_amount')->nullable(true);
-            $table->string('remark')->nullable(true);
+            $table->text('remark')->nullable(true);
             $table->timestamps();
         });
     }
