@@ -136,7 +136,7 @@ class DatabaseSeeder extends Seeder
         // }
 
         /** finaicialtrans, finalcialtrandetails */
-        // $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty FROM `temp_data` WHERE voucher_type IN ('DUE','REVDUE','SCHOLARSHIP','REVSCHOLARSHIP/REVCONCESSION','CONCESSION')");
+        // $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty FROM `temp_data` WHERE voucher_type IN ('DUE','REVDUE','SCHOLARSHIP','REVSCHOLARSHIP/REVCONCESSION','CONCESSION') limit 1000");
 
         // foreach ($trans as $parent) {
         //     $tempRecord = TempData::where('voucher_no', $parent->voucher_no)->first();
