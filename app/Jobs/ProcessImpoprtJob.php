@@ -102,8 +102,7 @@ class ProcessImpoprtJob implements ShouldQueue
         $chunks = array_chunk($arr, 5000);
         foreach ($chunks as $chunk) {
             TempData::create($chunk);
-        }
-        
+        }        
     }
 
     private function import(){

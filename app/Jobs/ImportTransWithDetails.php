@@ -9,6 +9,7 @@ use App\Models\Financialtran;
 use App\Models\Financialtrandetail;
 use App\Models\TempData;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
@@ -35,64 +36,70 @@ class ImportTransWithDetails implements ShouldQueue
     public function handle(): void
     {
         /** finaicialtrans, finalcialtrandetails */
-        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty FROM `temp_data` WHERE voucher_type IN ('DUE','REVDUE','SCHOLARSHIP','REVSCHOLARSHIP/REVCONCESSION','CONCESSION')");
+        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty FROM `temp_data` WHERE voucher_type IN ('DUE','REVDUE','SCHOLARSHIP','REVSCHOLARSHIP/REVCONCESSION','CONCESSION') AND voucher_no != '' AND voucher_type != '' AND faculty != ''");
 
         foreach ($trans as $parent) {
-            $tempRecord = TempData::where('voucher_no', $parent->voucher_no)->first();
+            $tempRecord = TempData::where('voucher_no', $parent->voucher_no)->where('voucher_type', $parent->voucher_type)->first();
             $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
             //dd($entryMod);
             $branch = Branch::where('branch_name', $parent->faculty)->first();
+            if (!$branch) {
+                Log::info("Financialtran: Branch not found");
+                Log::info(json_encode($parent));
+                continue;
+            }
             $amountField = CommonHelper::getAmountField($parent->voucher_type);
             $amount = TempData::where('voucher_no', $parent->voucher_no)->sum($amountField);
 
-            $toc = null;
-            if ($tempRecord->voucher_type == 'CONCESSION') {
-                $toc = 1;
-            } elseif ($tempRecord->voucher_type == 'SCHOLARSHIP') {
-                $toc = 2;
-            } else {
-                $toc = null;
-            }
-
-            $moduleID = 1;
-            if (stristr($tempRecord->fee_head, 'fine') != false) {
-                $moduleID = 11;
-            } elseif (stristr($tempRecord->fee_head, 'mess') != false) {
-                $moduleID = 2;
-            } else {
-                $moduleID = 1;
-            }
+            $toc = CommonHelper::getToc($tempRecord->voucher_type);
+            $moduleID = CommonHelper::getModuleID($tempRecord->fee_head);
+            
             // add entry in financialtran table
-            $newTran = Financialtran::create([
-                'moduleid' => $moduleID,
-                'transid' => CommonHelper::generateTransId(12),
-                'admno' => $tempRecord->admno_uniqueid,
-                'amount' => $amount,
-                'crdr' => $entryMod->crdr,
-                'trandate' => $tempRecord->transaction_date,
-                'acadyear' => $tempRecord->academic_year,
-                'entrymodeno' => (int)$entryMod->entrymodeno,
-                'voucherno' => $parent->voucher_no,
-                'br_id' => $branch->id,
-                'type_of_concession' => $toc,
-            ]);
-
-            // add child entries in 
-            $trandetails = DB::select("SELECT * FROM `temp_data` WHERE voucher_no ='" . $parent->voucher_no . "'");
-            foreach ($trandetails as $trandetail) {
-                $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
-                Financialtrandetail::create([
-                    'financial_trans_id' => $newTran->id,
-                    'module_id' => $moduleID,
-                    'amount' => $trandetail->{$amountField},
-                    'head_id' => 1,
+            try {
+                $newTran = Financialtran::create([
+                    'moduleid' => $moduleID,
+                    'transid' => CommonHelper::generateTransId(12),
+                    'admno' => $tempRecord->admno_uniqueid,
+                    'amount' => $amount,
                     'crdr' => $entryMod->crdr,
-                    'br_id' => $branch->id,
-                    'head_name' => $trandetail->fee_head,
+                    'trandate' => $tempRecord->transaction_date,
+                    'acadyear' => $tempRecord->academic_year,
+                    'entrymodeno' => (int)$entryMod->entrymodeno,
+                    'voucherno' => $parent->voucher_no,
+                    'br_id' => $branch->id ?? 1,
+                    'type_of_concession' => $toc,
                 ]);
+
+                // add child entries in 
+                $trandetails = DB::select("SELECT * FROM `temp_data` WHERE voucher_no ='" . $parent->voucher_no . "'");
+                foreach ($trandetails as $trandetail) {
+                    $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
+                    Financialtrandetail::create([
+                        'financial_trans_id' => $newTran->id,
+                        'module_id' => $moduleID,
+                        'amount' => $trandetail->{$amountField},
+                        'head_id' => 1,
+                        'crdr' => $entryMod->crdr,
+                        'br_id' => $branch->id ?? 1,
+                        'head_name' => $trandetail->fee_head,
+                    ]);
+                }
+            } catch (Exception $e) {
+                Log::error($e->getMessage());
+                Log::info(json_encode([
+                    'moduleid' => $moduleID,
+                    'transid' => CommonHelper::generateTransId(12),
+                    'admno' => $tempRecord->admno_uniqueid,
+                    'amount' => $amount,
+                    'crdr' => $entryMod->crdr,
+                    'trandate' => $tempRecord->transaction_date,
+                    'acadyear' => $tempRecord->academic_year,
+                    'entrymodeno' => (int)$entryMod->entrymodeno,
+                    'voucherno' => $parent->voucher_no,
+                    'br_id' => $branch->id ?? 1,
+                    'type_of_concession' => $toc,
+                ]));
             }
         }
     }
-
-    
 }

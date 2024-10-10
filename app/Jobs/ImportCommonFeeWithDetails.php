@@ -14,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
 class ImportCommonFeeWithDetails implements ShouldQueue
 {
@@ -33,32 +34,19 @@ class ImportCommonFeeWithDetails implements ShouldQueue
     public function handle(): void
     {
         /** commmonfeecollections, commonfeecollectionheadwise */
-        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty, roll_no,fee_head,admno_uniqueid, academic_year, `session`,receipt_no, transaction_date  FROM `temp_data` WHERE voucher_type IN ('RCPT','REVRCPT','JV','REVJV','PMT','REVPMT','Fundtransfer')");
+        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty, roll_no,fee_head,admno_uniqueid, academic_year, `session`,receipt_no, transaction_date  FROM `temp_data` WHERE voucher_type IN ('RCPT','REVRCPT','JV','REVJV','PMT','REVPMT','Fundtransfer') AND voucher_no != '' AND voucher_type != '' AND faculty != ''");
         
         foreach ($trans as $parent) {
             $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
             $branch = Branch::where('branch_name', $parent->faculty)->first();
+            if(!$branch){
+                Log::info("Branch not found");
+                Log::info(json_encode($parent));
+                continue;
+            }
             $amountField = CommonHelper::getAmountField($parent->voucher_type);
-
             $amount = TempData::where('voucher_no', $parent->voucher_no)->sum($amountField);
-
-            $toc = null;
-            if ($parent->voucher_type == 'CONCESSION') {
-                $toc = 1;
-            } elseif ($parent->voucher_type == 'SCHOLARSHIP') {
-                $toc = 2;
-            } else {
-                $toc = null;
-            }
-
-            $moduleID = 1;
-            if (stristr($parent->fee_head, 'fine') != false) {
-                $moduleID = 11;
-            } elseif (stristr($parent->fee_head, 'mess') != false) {
-                $moduleID = 2;
-            } else {
-                $moduleID = 1;
-            }
+            $moduleID = CommonHelper::getModuleID($parent->fee_head);
             // add entry in financialtran table
             $newTran = Commonfeecollection::create([
                 'moduleid' => $moduleID,
@@ -72,7 +60,7 @@ class ImportCommonFeeWithDetails implements ShouldQueue
                 'display_receipt_no' => $parent->receipt_no,
                 'entrymode' => $entryMod->entrymodeno,
                 'paid_date' => $parent->transaction_date,                
-                'inactive' => $parent->voucher_no,    
+                'inactive' => CommonHelper::getInactive($entryMod->entry_modename),    
             ]);
 
             // add child entries in 

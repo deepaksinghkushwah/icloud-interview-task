@@ -50,4 +50,59 @@ class CommonHelper
 
         return $amountField;
     }
+
+    public static function getToc($voucherType): int|null
+    {
+        $toc = null;
+        if ($voucherType == 'CONCESSION') {
+            $toc = 1;
+        } elseif ($voucherType == 'SCHOLARSHIP') {
+            $toc = 2;
+        } else {
+            $toc = null;
+        }
+        return $toc;
+    }
+
+    public static function getModuleID($feeHead): int
+    {
+        $moduleID = 1;
+        if (stristr($feeHead, 'fine') != false) {
+            $moduleID = 11;
+        } elseif (stristr($feeHead, 'mess') != false) {
+            $moduleID = 2;
+        } else {
+            $moduleID = 1;
+        }
+
+        return $moduleID;
+    }
+
+    public static function getInactive($type): int|null
+    {
+        $ret = 0;
+        switch ($type) {
+            case 'RCPT':
+                $ret = 0;
+                break;
+            case 'REVRCPT':
+                $ret = 1;
+                break;
+            case 'JV':
+                $ret = 0;
+                break;
+            case 'REVJV':
+                $ret = 1;
+                break;
+            case 'PMT':
+                $ret = 0;
+                break;
+            case 'REVPMT':
+                $ret = 1;
+                break;
+            default:
+                $ret = null;
+        }
+        return $ret;
+    }
 }
