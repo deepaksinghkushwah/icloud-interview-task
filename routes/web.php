@@ -27,4 +27,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/import-result', [ImportController::class, 'importResult'])->name('import.result');
 
     Route::get('/result-verify', [ImportController::class, 'resultVerify'])->name('import.resultVerify');
+
+    Route::get('/process-other-queue',[ImportController::class,'processTransAndFee'])->name('import.processTransAndFee');
 });

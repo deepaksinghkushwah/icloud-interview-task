@@ -9,5 +9,5 @@ class Financialtran extends Model
 {
     use HasFactory;
     public $timestamps = false;
-    protected $fillable = ['moduleid','transid','admno','amount','crdr','trandate','acadyear','entrymodnp','voucherno','br_id','type_of_concession'];
+    protected $fillable = ['moduleid','transid','admno','amount','crdr','trandate','acadyear','entrymodeno','voucherno','br_id','type_of_concession'];
 }

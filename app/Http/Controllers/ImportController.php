@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ImportCommonFeeWithDetails;
+use App\Jobs\ImportTransWithDetails;
 use App\Jobs\ProcessImpoprtJob;
 use App\Models\TempData;
 use Exception;
@@ -28,14 +30,21 @@ class ImportController extends Controller
         return redirect()->route('import.result')->with('success', 'CSV has been processed successfully');
     }
 
+    public function processTransAndFee()
+    {
+        dispatch(new ImportTransWithDetails())->onQueue('ImportTransWithDetails');
+        //dispatch(new ImportCommonFeeWithDetails())->onQueue('ImportCommonFeeWithDetails');
+    }
+
     public function importResult()
     {
-        
+
         return view('import.result');
     }
 
-    public function resultVerify(){
-        return view('import.verify',[
+    public function resultVerify()
+    {
+        return view('import.verify', [
             'totalRecords' => TempData::count(),
             'due_amount' => DB::table('temp_data')->sum('due_amount'),
             'concession_amount' => DB::table('temp_data')->sum('concession_amount'),

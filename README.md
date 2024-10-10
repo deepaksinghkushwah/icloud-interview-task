@@ -1,5 +1,5 @@
-php artisan queue:work --queue=import
+php artisan queue:work --queue=<jobname>
 
 For individual job
 ---------------------
-php artisan queue:work --queue=importProcess
+php artisan queue:work --queue=importProcess --timeout=0
