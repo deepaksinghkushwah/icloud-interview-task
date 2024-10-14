@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\FinancialTransactionController;
 use App\Http\Controllers\ImportController;
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
@@ -29,4 +30,6 @@ Route::middleware('auth')->group(function () {
     Route::get('/result-verify', [ImportController::class, 'resultVerify'])->name('import.resultVerify');
 
     Route::get('/process-other-queue',[ImportController::class,'processTransAndFee'])->name('import.processTransAndFee');
+
+    Route::get('/financial-transactions',[FinancialTransactionController::class,'index'])->name('financialtran.index');
 });

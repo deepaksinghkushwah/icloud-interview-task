@@ -4,11 +4,13 @@ namespace App\Jobs;
 
 use App\Models\TempData;
 use Carbon\Carbon;
+use Exception;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Foundation\Queue\Queueable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class ProcessImpoprtJob implements ShouldQueue
@@ -61,7 +63,7 @@ class ProcessImpoprtJob implements ShouldQueue
         $filestram = fopen($this->filepath, 'r');
         $arr = [];
         $c = 0;
-        while ($row = fgetcsv($filestram, 5000)) {
+        while ($row = fgetcsv($filestram, 1024)) {
             if ($c <= 5) {
                 $c++;
                 continue;
@@ -84,30 +86,63 @@ class ProcessImpoprtJob implements ShouldQueue
                 'batch' => $this->convertToUTF8($row[$mapping['batch']]),
                 'receipt_no' => $this->convertToUTF8($row[$mapping['receipt_no']]),
                 'fee_head' => $this->convertToUTF8($row[$mapping['fee_head']]),
-                'due_amount' => $this->convertToUTF8($row[$mapping['due_amount']]),
-                'paid_amount' => $this->convertToUTF8($row[$mapping['paid_amount']]),
-                'concession_amount' => $this->convertToUTF8($row[$mapping['concession_amount']]),
-                'scholarship_amount' => $this->convertToUTF8($row[$mapping['scholarship_amount']]),
-                'reverse_concession_amount' => $this->convertToUTF8($row[$mapping['reverse_concession_amount']]),
-                'write_off_amount' => $this->convertToUTF8($row[$mapping['write_off_amount']]),
-                'adjusted_amount' => $this->convertToUTF8($row[$mapping['adjusted_amount']]),
-                'refund_amount' => $this->convertToUTF8($row[$mapping['refund_amount']]),
-                'fund_trancfer_amount' => $this->convertToUTF8($row[$mapping['fund_trancfer_amount']]),
+                'due_amount' => (float)($row[$mapping['due_amount']]) ?? 0.00,
+                'paid_amount' => (float)($row[$mapping['paid_amount']]) ?? 0.00,
+                'concession_amount' => (float)($row[$mapping['concession_amount']]) ?? 0.00,
+                'scholarship_amount' => (float)($row[$mapping['scholarship_amount']]) ?? 0.00,
+                'reverse_concession_amount' => (float)($row[$mapping['reverse_concession_amount']]) ?? 0.00,
+                'write_off_amount' => (float)($row[$mapping['write_off_amount']]) ?? 0.00,
+                'adjusted_amount' => (float)($row[$mapping['adjusted_amount']]) ?? 0.00,
+                'refund_amount' => (float)($row[$mapping['refund_amount']]) ?? 0.00,
+                'fund_trancfer_amount' => (float)($row[$mapping['fund_trancfer_amount']]) ?? 0.00,
                 'remark' => $this->convertToUTF8($row[$mapping['remark']]),
 
             ];
         }
         fclose($filestram);
         unlink($this->filepath);
-        $chunks = array_chunk($arr, 5000);
+
+        $chunks = array_chunk($arr, 1000);
+        //Log::info($chunks[0]);
         foreach ($chunks as $chunk) {
-            TempData::create($chunk);
-        }        
+            //Log::info($chunk);
+            try {
+                TempData::upsert($chunk, [
+                    'transaction_date',
+                    'academic_year',
+                    'session',
+                    'alloted_category',
+                    'voucher_type',
+                    'voucher_no',
+                    'roll_no',
+                    'admno_uniqueid',
+                    'status',
+                    'fee_category',
+                    'faculty',
+                    'program',
+                    'department',
+                    'batch',
+                    'receipt_no',
+                    'fee_head',
+                    'due_amount',
+                    'paid_amount',
+                    'concession_amount',
+                    'scholarship_amount',
+                    'reverse_concession_amount',
+                    'write_off_amount',
+                    'adjusted_amount',
+                    'refund_amount',
+                    'fund_trancfer_amount',
+                    'remark'
+                ]);
+            } catch (Exception $e) {
+                Log::error($e->getMessage());
+                Log::info($chunk);
+                break;
+            }
+        }
     }
 
-    private function import(){
-
-    }
     private function convertToUTF8($str)
     {
         $str = preg_replace('/[\x00-\x1F\x7F]/', '', $str);

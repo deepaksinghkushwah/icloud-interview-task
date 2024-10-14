@@ -34,7 +34,7 @@ class ImportCommonFeeWithDetails implements ShouldQueue
     public function handle(): void
     {
         /** commmonfeecollections, commonfeecollectionheadwise */
-        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty, roll_no,fee_head,admno_uniqueid, academic_year, `session`,receipt_no, transaction_date  FROM `temp_data` WHERE voucher_type IN ('RCPT','REVRCPT','JV','REVJV','PMT','REVPMT','Fundtransfer') AND voucher_no != '' AND voucher_type != '' AND faculty != ''");
+        $trans = DB::select("SELECT voucher_no, voucher_type,faculty, roll_no,fee_head,admno_uniqueid, academic_year, `session`,receipt_no, transaction_date FROM `temp_data` WHERE voucher_type IN ('RCPT','REVRCPT','JV','REVJV','PMT','REVPMT','Fundtransfer') GROUP by `voucher_no`,`admno_uniqueid`, `transaction_date`");
         
         foreach ($trans as $parent) {
             $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
@@ -45,7 +45,12 @@ class ImportCommonFeeWithDetails implements ShouldQueue
                 continue;
             }
             $amountField = CommonHelper::getAmountField($parent->voucher_type);
-            $amount = TempData::where('voucher_no', $parent->voucher_no)->sum($amountField);
+            $amount = TempData::where([
+                'voucher_no'=> $parent->voucher_no,
+                'admno_uniqueid' => $parent->admno_uniqueid,
+                'transaction_date' =>$parent->transaction_date,
+                'receipt_no' => $parent->receipt_no,
+            ])->sum($amountField);
             $moduleID = CommonHelper::getModuleID($parent->fee_head);
             // add entry in financialtran table
             $newTran = Commonfeecollection::create([
