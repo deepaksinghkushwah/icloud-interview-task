@@ -49,7 +49,6 @@ class ImportCommonFeeWithDetails implements ShouldQueue
                 'voucher_no'=> $parent->voucher_no,
                 'admno_uniqueid' => $parent->admno_uniqueid,
                 'transaction_date' =>$parent->transaction_date,
-                'receipt_no' => $parent->receipt_no,
             ])->sum($amountField);
             $moduleID = CommonHelper::getModuleID($parent->fee_head);
             // add entry in financialtran table
@@ -69,7 +68,7 @@ class ImportCommonFeeWithDetails implements ShouldQueue
             ]);
 
             // add child entries in 
-            $trandetails = DB::select("SELECT * FROM `temp_data` WHERE voucher_no ='" . $parent->voucher_no . "'");
+            $trandetails = DB::select("SELECT * FROM `temp_data` WHERE voucher_no ='" . $parent->voucher_no . "' AND `admno_uniqueid` = '{$parent->admno_uniqueid}' AND `transaction_date` = '{$parent->transaction_date}'");
             foreach ($trandetails as $trandetail) {
                 $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
                 Commonfeecollectionheadwise::create([

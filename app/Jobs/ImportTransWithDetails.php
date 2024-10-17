@@ -36,10 +36,10 @@ class ImportTransWithDetails implements ShouldQueue
     public function handle(): void
     {
         /** finaicialtrans, finalcialtrandetails */
-        $trans = DB::select("SELECT DISTINCT(voucher_no), voucher_type,faculty FROM `temp_data` WHERE voucher_type IN ('DUE','REVDUE','SCHOLARSHIP','REVSCHOLARSHIP/REVCONCESSION','CONCESSION') AND voucher_no != '' AND voucher_type != '' AND faculty != ''");
+        $trans = DB::select("SELECT * FROM `temp_data` WHERE voucher_type IN ('DUE','REVDUE','SCHOLARSHIP','REVSCHOLARSHIP/REVCONCESSION','CONCESSION') GROUP BY `admno_uniqueid`");
 
         foreach ($trans as $parent) {
-            $tempRecord = TempData::where('voucher_no', $parent->voucher_no)->where('voucher_type', $parent->voucher_type)->first();
+            //$tempRecord = TempData::where('admno_uniqueid', $parent->admno_uniqueid)->first();
             $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
             //dd($entryMod);
             $branch = Branch::where('branch_name', $parent->faculty)->first();
@@ -49,57 +49,75 @@ class ImportTransWithDetails implements ShouldQueue
                 continue;
             }
             $amountField = CommonHelper::getAmountField($parent->voucher_type);
-            $amount = TempData::where('voucher_no', $parent->voucher_no)->sum($amountField);
+            $amount = TempData::where('admno_uniqueid', $parent->admno_uniqueid)->sum($amountField);
 
-            $toc = CommonHelper::getToc($tempRecord->voucher_type);
-            $moduleID = CommonHelper::getModuleID($tempRecord->fee_head);
-            
+            $toc = CommonHelper::getToc($entryMod->entrymode_name);
+            $moduleID = CommonHelper::getModuleID($parent->fee_head);
+
             // add entry in financialtran table
-            try {
-                $newTran = Financialtran::create([
-                    'moduleid' => $moduleID,
-                    'transid' => CommonHelper::generateTransId(12),
-                    'admno' => $tempRecord->admno_uniqueid,
-                    'amount' => $amount,
-                    'crdr' => $entryMod->crdr,
-                    'trandate' => $tempRecord->transaction_date,
-                    'acadyear' => $tempRecord->academic_year,
-                    'entrymodeno' => (int)$entryMod->entrymodeno,
-                    'voucherno' => $parent->voucher_no,
-                    'br_id' => $branch->id ?? 1,
-                    'type_of_concession' => $toc,
-                ]);
 
-                // add child entries in 
-                $trandetails = DB::select("SELECT * FROM `temp_data` WHERE voucher_no ='" . $parent->voucher_no . "'");
-                foreach ($trandetails as $trandetail) {
-                    $entryMod = EntryMode::where('entry_modename', $parent->voucher_type)->first();
-                    Financialtrandetail::create([
-                        'financial_trans_id' => $newTran->id,
-                        'module_id' => $moduleID,
-                        'amount' => $trandetail->{$amountField},
-                        'head_id' => 1,
-                        'crdr' => $entryMod->crdr,
-                        'br_id' => $branch->id ?? 1,
-                        'head_name' => $trandetail->fee_head,
-                    ]);
-                }
-            } catch (Exception $e) {
-                Log::error($e->getMessage());
-                Log::info(json_encode([
-                    'moduleid' => $moduleID,
-                    'transid' => CommonHelper::generateTransId(12),
-                    'admno' => $tempRecord->admno_uniqueid,
-                    'amount' => $amount,
+            $newTran[] = [
+                'moduleid' => $moduleID,
+                'transid' => CommonHelper::generateTransId(12),
+                'admno' => $parent->admno_uniqueid,
+                'amount' => $amount,
+                'crdr' => $entryMod->crdr,
+                'trandate' => $parent->transaction_date,
+                'acadyear' => $parent->academic_year,
+                'entrymodeno' => (int)$entryMod->entrymodeno,
+                'voucherno' => $parent->voucher_no,
+                'br_id' => $branch->id ?? 1,
+                'type_of_concession' => $toc,
+            ];
+        }
+
+        $chunks = array_chunk($newTran, 100);
+        foreach ($chunks as $chunk) {
+            Financialtran::upsert($chunk, [
+                'moduleid',
+                'transid',
+                'admno',
+                'amount',
+                'crdr',
+                'trandate',
+                'acadyear',
+                'entrymodeno',
+                'voucherno',
+                'br_id',
+                'type_of_concession',
+            ]);
+        }
+
+        $transactions = Financialtran::all();
+        foreach ($transactions as $tran) {
+            
+            $trandetails = DB::select("SELECT * FROM `temp_data` WHERE admno_uniqueid ='" . $tran->admno_uniqueid . "'");
+            foreach ($trandetails as $trandetail) {
+                $entryMod = EntryMode::where('entry_modename', $trandetail->voucher_type)->first();
+                $td[] = [
+                    'financial_trans_id' => $tran->id,
+                    'module_id' => $moduleID,
+                    'amount' => $trandetail->{$amountField},
+                    'head_id' => 1,
                     'crdr' => $entryMod->crdr,
-                    'trandate' => $tempRecord->transaction_date,
-                    'acadyear' => $tempRecord->academic_year,
-                    'entrymodeno' => (int)$entryMod->entrymodeno,
-                    'voucherno' => $parent->voucher_no,
                     'br_id' => $branch->id ?? 1,
-                    'type_of_concession' => $toc,
-                ]));
+                    'head_name' => $trandetail->fee_head,
+                ];
             }
+        }
+
+        $chunks = array_chunk($td, 1000);
+        foreach ($chunks as $chunk) {
+            Financialtrandetail::upsert($chunk, [
+                'financial_trans_id',
+                'module_id',
+                'admno',
+                'amount',
+                'head_id',
+                'crdr',
+                'br_id',
+                'head_name',
+            ]);
         }
     }
 }

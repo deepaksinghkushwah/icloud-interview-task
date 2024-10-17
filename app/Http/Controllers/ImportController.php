@@ -32,8 +32,8 @@ class ImportController extends Controller
 
     public function processTransAndFee()
     {
-        //dispatch(new ImportTransWithDetails())->onQueue('ImportTransWithDetails');
-        dispatch(new ImportCommonFeeWithDetails())->onQueue('ImportCommonFeeWithDetails');
+        dispatch(new ImportTransWithDetails())->onQueue('ImportTransWithDetails');
+        //dispatch(new ImportCommonFeeWithDetails())->onQueue('ImportCommonFeeWithDetails');
     }
 
     public function importResult()
